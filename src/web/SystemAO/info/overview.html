@@ -6,9 +6,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=no">
     <link rel="stylesheet" href="../../script/semantic/semantic.min.css">
-    <script type="text/javascript" src="../../script/jquery.min.js"></script>
-    <script type="text/javascript" src="../../script/semantic/semantic.min.js"></script>
-    <script type="text/javascript" src="../../script/applocale.js"></script>
+    <script src="../../script/jquery.min.js"></script>
+    <script src="../../script/semantic/semantic.min.js"></script>
+    <script src="../../script/applocale.js"></script>
+    <style>
+        /* Hardware Acceleration */
+        .ui.stackable.grid {
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        /* Optimize avatar rendering */
+        #avator,
+        #icon {
+            image-rendering: -webkit-optimize-contrast;
+            backface-visibility: hidden;
+        }
+    </style>
 </head>
 
 <body>
@@ -101,24 +115,77 @@
     <br>
 </body>
 <script>
-    var overviewLocale = NewAppLocale();
+    var pageLocale = NewAppLocale();
 
     $(document).ready(function () {
-        overviewLocale.init("../locale/system_settings/overview.json", function () {
-            overviewLocale.translate();
-            $.getJSON("../../system/info/getRuntimeInfo", function (data) {
-                $("#startup").text(ao_module_utils.timeConverter(data.StartupTime));
-                $("#operation").text(ao_module_utils.durationConverter(data.ContinuesRuntime));
-                $("#operation").attr("startunix", data.StartupTime);
-                accumulateOperationTime();
-            });
+        const cacheSelectors = {
+            operation: $("#operation"),
+            homepageStatus: $("#homepageStatus"),
+            usedStorage: $("#usedStorage"),
+            totalStorage: $("#totalStorage"),
+            startup: $("#startup")
+        };
 
-            initHostInfo();
-            initUserInfo();
-            initStorageInfo();
-            initHomepageState();
+        pageLocale.init("../locale/system_settings/overview.json", async function () {
+            pageLocale.translate();
+
+            // 并行请求所有数据
+            const [runtimeInfo, hostInfo, userInfo, storageInfo, homepageState] = await Promise.all([
+                $.getJSON("../../system/info/getRuntimeInfo"),
+                $.get("../../system/info/getArOZInfo?icon=true"),
+                $.get("../../system/users/userinfo"),
+                $.get("../../system/disk/quota/quotaInfo"),
+                $.get("../../system/network/www/toggle")
+            ]);
+
+            // Handle data
+            handleRuntimeInfo(runtimeInfo);
+            handleHostInfo(hostInfo);
+            handleUserInfo(userInfo);
+            handleStorageInfo(storageInfo);
+            handleHomepageState(homepageState);
         });
     });
+
+    // Handle runtime info
+    function handleRuntimeInfo(data) {
+        const opTime = ao_module_utils.durationConverter(data.ContinuesRuntime);
+        $("#startup").text(ao_module_utils.timeConverter(data.StartupTime));
+        $("#operation").text(opTime).attr("startunix", data.StartupTime);
+        setupTimeUpdater(data.StartupTime);
+    }
+
+    function handleHostInfo(data) {
+        $("#icon").attr('src', 'data:image/png;base64,' + data.VendorIcon);
+        $("#hostname").text(data.HostName);
+        $("#version").text(data.BuildVersion);
+    }
+
+    function handleUserInfo(data) {
+        $("#username").text(data.Username);
+        $("#usergroup").text("@" + data.Usergroup.join(","));
+        data.Icondata && $("#avator").attr("src", data.Icondata);
+    }
+
+    function handleStorageInfo(data) {
+        let percentage = "0%";
+        if (data.Total === -1) {
+            $("#totalStorage").text(pageLocale.getString("overview/info/unlimited"));
+        } else if (data.Total === 0) {
+            $("#totalStorage").text(pageLocale.getString("overview/info/readonly"));
+            percentage = "100%";
+        } else {
+            $("#totalStorage").text(ao_module_utils.formatBytes(data.Total, 2));
+            percentage = `${((data.Used / data.Total) * 100).toFixed(2)}%`;
+        }
+        $("#usedStorage").text(`${ao_module_utils.formatBytes(data.Used, 2)} (${percentage})`);
+    }
+
+    function handleHomepageState(data) {
+        const statusKey = data ? "overview/status/online" : "overview/status/offline";
+        const iconClass = data ? "green circle" : "red circle";
+        $("#homepageStatus").html(`<h5><i class="${iconClass} icon"></i> ${pageLocale.getString(statusKey)}</h5>`);
+    }
 
     function initHostInfo() {
         $.get("../../system/info/getArOZInfo?icon=true", function (data) {
@@ -142,9 +209,9 @@
         $.get("../../system/disk/quota/quotaInfo", function (data) {
             let percentageText = "0%";
             if (data.Total == -1) {
-                $("#totalStorage").text(overviewLocale.getString("overview/info/unlimited", "Unlimited"));
+                $("#totalStorage").text(pageLocale.getString("overview/info/unlimited", "Unlimited"));
             } else if (data.Total == 0) {
-                $("#totalStorage").text(overviewLocale.getString("overview/info/readonly", "Read Only"));
+                $("#totalStorage").text(pageLocale.getString("overview/info/readonly", "Read Only"));
                 percentageText = "100%";
             } else {
                 $("#totalStorage").text(ao_module_utils.formatBytes(data.Total, 2));
@@ -157,40 +224,26 @@
     function initHomepageState() {
         $.get("../../system/network/www/toggle", function (data) {
             if (data == true) {
-                $("#homepageStatus").html(`<h5><i class="green circle icon"></i> ${overviewLocale.getString("overview/status/online", "Online")}</h5>`);
+                $("#homepageStatus").html(`<h5><i class="green circle icon"></i> ${pageLocale.getString("overview/status/online", "Online")}</h5>`);
             } else {
-                $("#homepageStatus").html(`<h5><i class="red circle icon"></i> ${overviewLocale.getString("overview/status/offline", "Offline")}</h5>`);
+                $("#homepageStatus").html(`<h5><i class="red circle icon"></i> ${pageLocale.getString("overview/status/offline", "Offline")}</h5>`);
             }
 
         });
     }
 
-    function accumulateOperationTime() {
-        setTimeout(function () {
-            if ($("#operation").length > 0) {
-                var startUnix = $("#operation").attr("startunix");
-                startUnix = parseInt(startUnix);
-                var newOprTime = parseInt(Date.now() / 1000) - startUnix
-                $("#operation").text(ao_module_utils.durationConverter(newOprTime));
-                accumulateOperationTime();
-            }
+    let timeUpdateInterval;
+
+    function setupTimeUpdater(startUnix) {
+        clearInterval(timeUpdateInterval); // Clear any existing interval
+        timeUpdateInterval = setInterval(() => {
+            const newOprTime = Math.floor(Date.now() / 1000) - startUnix;
+            $("#operation").text(ao_module_utils.durationConverter(newOprTime));
         }, 1000);
     }
 
-    //https://stackoverflow.com/questions/10420352/converting-file-size-in-bytes-to-human-readable-string/10420404
-    function humanFileSize(bytes, si) {
-        var thresh = si ? 1000 : 1024;
-        if (Math.abs(bytes) < thresh) {
-            return bytes + ' B';
-        }
-        var units = si ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-        var u = -1;
-        do {
-            bytes /= thresh;
-            ++u;
-        } while (Math.abs(bytes) >= thresh && u < units.length - 1);
-        return bytes.toFixed(1) + ' ' + units[u];
-    }
+    // Clear when unloading the page
+    $(window).on('unload', () => clearInterval(timeUpdateInterval));
 </script>
 
 </html>
