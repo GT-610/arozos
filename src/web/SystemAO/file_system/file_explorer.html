@@ -981,6 +981,8 @@
         }
 
         // ============================== FOLDER LISTING FUNCTIONS ====================
+        const $folderList = $("#folderList");
+        const $fileList = $("#fileList");
         function listDirectory(path, callback = undefined, recordUndo = true) {
             enableAutoRefresh = false;
             var recordPreviousPage = true;
@@ -1050,12 +1052,12 @@
             }
 
             //Add loading screen to the folderlists and fileList
-            $("#fileList").html("");
+            $fileList.html("");
             let loaderClass = "inverted";
             if (currentTheme == "darkTheme") {
                 loaderClass = "";
             }
-            $("#folderList").html(`<div style="height: 100px;">
+            $folderList.html(`<div style="height: 100px;">
                     <div class="ui active ${loaderClass} dimmer" style="z-index: 95;">
                         <div class="ui text loader">${applocale.getString("message/loading", "Loading")}</div>
                     </div>
@@ -1070,7 +1072,7 @@
             let loadStartPath = currentPath;
             $.ajax({
                 url: "../../system/file_system/sortMode",
-                metod: "POST",
+                method: "POST",
                 data: { opr: "get", folder: currentPath },
                 success: function (data) {
                     if (data.error == undefined) {
@@ -1087,8 +1089,8 @@
                             currentFilelist = [];
                             if (data === null) {
                                 //There is nothing in this folder.
-                                $("#folderList").hide();
-                                $("#fileList").hide();
+                                $folderList.hide();
+                                $fileList.hide();
                                 if (callback !== undefined) {
                                     callback();
                                 }
@@ -1129,15 +1131,15 @@
                                 }
 
                                 //Print folder not found exception
-                                $("#folderList").show();
-                                $("#folderList").html(`<div class="ui basic segment">
+                                $folderList.show();
+                                $folderList.html(`<div class="ui basic segment">
                                         <div class="ui header themed">
                                             <i class="remove icon"></i> <span>${applocale.getString("message/folderCannotOpen", "This Folder Cannot Be Opened")}</span>
                                             <div class="sub header" style="margin-top:12px;">${applocale.getString("message/folderCannotOpen/codedesc", "The server return the following error message:")} <br><code>${data.error.toUpperCase()}</code><br>
                                                 ${new Date().toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', weekday: "long", hour: '2-digit', hour12: false, minute: '2-digit', second: '2-digit' })}</div>
                                         </div>
                                     </div>`);
-                                $("#fileList").hide();
+                                $fileList.hide();
 
                                 enableAutoRefresh = false;
                                 return;
