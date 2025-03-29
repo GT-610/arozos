@@ -1070,114 +1070,104 @@
 
             //Get sort mode from server side
             let loadStartPath = currentPath;
-            $.ajax({
+
+            const sortRequest = $.ajax({
                 url: "../../system/file_system/sortMode",
                 method: "POST",
-                data: { opr: "get", folder: currentPath },
-                success: function (data) {
-                    if (data.error == undefined) {
-                        sortMode = data;
-                    }
+                data: { opr: "get", folder: currentPath }
+            });
+
+            sortRequest.then(sortResponse => {
+                if (!sortResponse.error) {
+                    sortMode = sortResponse;
                     $("#sortingMethodSelector").dropdown("set selected", sortMode);
-                    //Start listdir event
-                    $.ajax({
-                        url: "../../system/file_system/listDir",
-                        method: "POST",
-                        data: { dir: decodeURIComponent(path), sort: sortMode },
-                        success: function (data) {
-                            //Parse the filelist into global variable
-                            currentFilelist = [];
-                            if (data === null) {
-                                //There is nothing in this folder.
-                                $folderList.hide();
-                                $fileList.hide();
+                }
+                if (currentPath != loadStartPath) {
+                    //Use switch to another path before the load finish. Do not render
+                    return;
+                }
+                // Use sort mode to get the list
+                const listRequest = $.ajax({
+                    url: "../../system/file_system/listDir",
+                    method: "POST",
+                    data: { dir: decodeURIComponent(path), sort: sortMode }
+                });
+                return listRequest; // Rerurn the promise
+            })
+                .then(listResponse => {
+                    const data = listResponse;
+                    if (data.error) {
+                        if (data.error !== undefined) {
+                            //Parse path error. Try to refresh the page
+                            if (data.error.length >= "Redirect:".length && data.error.substr(0, 9) == "Redirect:") {
+                                var redirectAction = data.error.substr(9).trim();
+                                if (redirectAction == "parent") {
+                                    var pdir = currentPath.split("/");
+                                    pdir.pop(); pdir.pop();
+                                    pdir = pdir.join("/");
+                                    currentPath = pdir;
+                                    listDirectory(currentPath);
+                                } else if (redirectAction == "root") {
+                                    var currentRoot = currentPath.split("/").shift();
+                                    listDirectory(currentRoot);
+                                } else if (redirectAction == "userroot") {
+                                    listDirectory("user:/")
+                                } else {
+                                    //Try to breakdown the redirection path
+                                    listDirectory(redirectAction, undefined, false);
+                                }
+                                return
+                            }
+                            //Check if it is already rooted and no more parent ahead
+                            if (currentPath == "") {
+                                currentPath = "user:/";
+                            }
+
+                            //Print folder not found exception
+                            $folderList.show();
+                            $folderList.html(`<div class="ui basic segment">
+                                    <div class="ui header themed">
+                                        <i class="remove icon"></i> <span>${applocale.getString("message/folderCannotOpen", "This Folder Cannot Be Opened")}</span>
+                                        <div class="sub header" style="margin-top:12px;">${applocale.getString("message/folderCannotOpen/codedesc", "The server return the following error message:")} <br><code>${data.error.toUpperCase()}</code><br>
+                                            ${new Date().toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', weekday: "long", hour: '2-digit', hour12: false, minute: '2-digit', second: '2-digit' })}</div>
+                                    </div>
+                                </div>`);
+                            $fileList.hide();
+                            enableAutoRefresh = false;
+                            return;
+                        } else {
+                            enableAutoRefresh = true;
+                            //Filelist returned. Render it
+                            renderDirectory(data, function () {
+                                //Restore the selected file list
+                                $(".fileObject.item").each(function () {
+                                    for (var i = 0; i < selectedFiles.length; i++) {
+                                        var thisFilename = selectedFiles[i];
+                                        if (thisFilename == $(this).attr("filename")) {
+                                            $(this).addClass("selected");
+                                        }
+                                    }
+                                });
+
+                                //Restore the previous scroll position
+                                $("#folderView").scrollTop(currentScrollTop);
+
+                                //Perform the callback
                                 if (callback !== undefined) {
                                     callback();
                                 }
-                                return;
-                            }
 
-                            if (currentPath != loadStartPath) {
-                                //Use switch to another path before the load finish. Do not render
-                                return;
-                            }
-
-                            if (data.error !== undefined) {
-                                //Parse path error. Try to refresh the page
-                                if (data.error.length >= "Redirect:".length && data.error.substr(0, 9) == "Redirect:") {
-                                    var redirectAction = data.error.substr(9).trim();
-                                    if (redirectAction == "parent") {
-                                        var pdir = currentPath.split("/");
-                                        pdir.pop(); pdir.pop();
-                                        pdir = pdir.join("/");
-                                        currentPath = pdir;
-                                        listDirectory(currentPath);
-                                    } else if (redirectAction == "root") {
-                                        var currentRoot = currentPath.split("/").shift();
-                                        listDirectory(currentRoot);
-                                    } else if (redirectAction == "userroot") {
-                                        listDirectory("user:/")
-                                    } else {
-                                        //Try to breakdown the redirection path
-                                        listDirectory(redirectAction, undefined, false);
-                                    }
-                                    return
-                                }
-
-
-                                //Check if it is already rooted and no more parent ahead
-                                if (currentPath == "") {
-                                    currentPath = "user:/";
-                                }
-
-                                //Print folder not found exception
-                                $folderList.show();
-                                $folderList.html(`<div class="ui basic segment">
-                                        <div class="ui header themed">
-                                            <i class="remove icon"></i> <span>${applocale.getString("message/folderCannotOpen", "This Folder Cannot Be Opened")}</span>
-                                            <div class="sub header" style="margin-top:12px;">${applocale.getString("message/folderCannotOpen/codedesc", "The server return the following error message:")} <br><code>${data.error.toUpperCase()}</code><br>
-                                                ${new Date().toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', weekday: "long", hour: '2-digit', hour12: false, minute: '2-digit', second: '2-digit' })}</div>
-                                        </div>
-                                    </div>`);
-                                $fileList.hide();
-
-                                enableAutoRefresh = false;
-                                return;
-                            } else {
                                 enableAutoRefresh = true;
-                                //Filelist returned. Render it
-                                renderDirectory(data, function () {
-                                    //Restore the selected file list
-                                    $(".fileObject.item").each(function () {
-                                        for (var i = 0; i < selectedFiles.length; i++) {
-                                            var thisFilename = selectedFiles[i];
-                                            if (thisFilename == $(this).attr("filename")) {
-                                                $(this).addClass("selected");
-                                            }
-                                        }
-                                    });
-
-                                    //Restore the previous scroll position
-                                    $("#folderView").scrollTop(currentScrollTop);
-
-                                    //Perform the callback
-                                    if (callback !== undefined) {
-                                        callback();
-                                    }
-
-                                    enableAutoRefresh = true;
-                                });
-                            }
-                        },
-                        error: function () {
-                            enableAutoRefresh = true;
+                            });
                         }
-                    });
-                },
-                error: function () {
+                    } else {
+                        renderDirectory(data, callback);
+                    }
+                })
+                .catch(error => {
+                    console.error("Request failed: ", error);
                     enableAutoRefresh = true;
-                }
-            });
+                });
         }
 
         function listDirectoryAndHighlight(path, filenameToHighlight = "") {
@@ -2250,7 +2240,6 @@
                     filenameBackups.push($(this).attr("filename"));
                 });
             }
-            console.log(filenameBackups);
             updateCtrlDisplay();
             listDirectory(currentPath, function () {
                 if (keepSelectedItems) {
