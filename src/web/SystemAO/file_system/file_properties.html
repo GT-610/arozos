@@ -313,30 +313,37 @@
 
         //head is a 1D array and table is 2D array
         function ui_getTable(heads, table) {
-            html = `<table class="ui very basic fluid table">`;
+            // Cache the HTML parts
+            const htmlParts = ['<table class="ui very basic fluid table">'];
+
+            // Build thead
             if (heads.length > 0) {
-                html += `<thead><tr>`;
-                for (var i = 0; i < heads.length; i++) {
-                    html += `<th>${heads[i]}</th>`;
-                }
-                html += `</tr></thead>`;
-            }
-            html += `<tbody>`;
-            for (var i = 0; i < table.length; i++) {
-                html += `<tr>`;
-                for (var j = 0; j < table[i].length; j++) {
-                    var keyString = table[i][j];
-                    if (j == 0 && applocale) {
-                        keyString = applocale.getString("properties/key/" + keyString.trim(), keyString);
-                    }
-                    html += `<td style="word-break: break-all;">${keyString}</td>`
-                }
-                html += `</tr>`;
+                htmlParts.push(
+                    '<thead><tr>',
+                    heads.map(head => `<th>${head}</th>`).join(''),
+                    '</tr></thead>'
+                );
             }
 
-            html += `</tbody>
-                        </table>`;
-            return html
+            // Build tbody
+            htmlParts.push(
+                '<tbody>',
+                table.map(row =>
+                    `<tr>${row.map((cell, cellIndex) => {
+                        // Only translate the first column
+                        let content = cell;
+                        if (cellIndex === 0 && applocale) {
+                            const localeKey = `properties/key/${cell.trim()}`;
+                            content = applocale.getString(localeKey, cell);
+                        }
+                        return `<td style="word-break: break-all;">${content}</td>`;
+                    }).join('')
+                    }</tr>`
+                ).join(''),
+                '</tbody></table>'
+            );
+
+            return htmlParts.join('');
         }
 
         function bytesToSize(bytes) {
@@ -403,59 +410,72 @@
             initFileProperties();
         }
 
-        /*
-            Updates 9 April 2021: Added day compare for last modification days
-        */
-
+        // Generate the display text for last modified time
         function generateDisplayLastModTime(lastModTime) {
-            //Try to split the date into js date format
-            var dateInfo = (lastModTime.split(" ")[0]).split("-");
-            var modTime = new Date(dateInfo[0], dateInfo[1], dateInfo[2]);
-            var diff = calcDate(new Date(), modTime);
-            var displayText = "Unknown";
-            if (diff[2] > 0) {
-                //years
-                displayText = diff[2] + applocale.getString("lastmod/time/year", " year");
-                if (diff[2] > 1) {
-                    displayText += applocale.getString("lastmod/time/s", "s")
-                }
+            // Parse the date 
+            const parseDate = (str) => {
+                const [datePart] = str.split(" ");
+                const [year, month, day] = datePart.split("-");
+                return new Date(year, month - 1, day); // Month index
+            };
 
-                displayText += applocale.getString("lastmod/time/ago", " ago");
+            const modTime = parseDate(lastModTime);
+            const now = new Date();
+            const [years, months, days] = calcDate(now, modTime);
 
-            } else if (diff[1] > 0) {
-                //months
-                displayText = diff[1] + applocale.getString("lastmod/time/month", "  month");
-                if (diff[1] > 1) {
-                    displayText += applocale.getString("lastmod/time/s", "s")
-                }
+            let displayText = "Unknown";
 
-                displayText += applocale.getString("lastmod/time/ago", " ago");
-            } else if (diff[0] > 0) {
-                //days
-                displayText = diff[0] + applocale.getString("lastmod/time/days", "  day");
-                if (diff[0] > 1) {
+            if (years > 0) {
+                if (years > 1 && applocale.getString("lastmod/time/s")) {
                     displayText += applocale.getString("lastmod/time/s", "s");
                 }
-
-                displayText += applocale.getString("lastmod/time/ago", " ago");
+                displayText = `${years}${applocale.getString("lastmod/time/year", "year")}${applocale.getString("lastmod/time/ago")}`;
+            } else if (months > 0) {
+                if (months > 1 && applocale.getString("lastmod/time/s")) {
+                    displayText += applocale.getString("lastmod/time/s", "s");
+                }
+                displayText = `${months}${applocale.getString("lastmod/time/month", "month")}${applocale.getString("lastmod/time/ago")}`;
+            } else if (days > 0) {
+                if (days > 1 && applocale.getString("lastmod/time/s")) {
+                    displayText += applocale.getString("lastmod/time/s", "s");
+                }
+                displayText = `${days}${applocale.getString("lastmod/time/days", "day")}${applocale.getString("lastmod/time/ago")}`;
             } else {
-                //just now
                 displayText = applocale.getString("lastmod/time/today", "Today");
             }
 
-            return displayText + " (" + lastModTime + ")";
+            return `${displayText} (${lastModTime})`;
         }
 
-        function calcDate(date1 = new Date(), date2) {
-            var diff = Math.floor(date1.getTime() - date2.getTime());
-            var day = 1000 * 60 * 60 * 24;
+        function calcDate(endDate = new Date(), startDate) {
+            // Make sure startDate is a Date object
+            if (!(startDate instanceof Date)) {
+                startDate = new Date(startDate);
+            }
 
-            var days = Math.floor(diff / day);
-            var months = Math.floor(days / 31);
-            var years = Math.floor(months / 12);
+            let years = endDate.getFullYear() - startDate.getFullYear();
+            let months = endDate.getMonth() - startDate.getMonth();
+            let days = endDate.getDate() - startDate.getDate();
 
+            // Cross months
+            if (days < 0) {
+                const lastMonth = new Date(endDate);
+                lastMonth.setMonth(lastMonth.getMonth() - 1);
+                days += new Date(
+                    lastMonth.getFullYear(),
+                    lastMonth.getMonth() + 1,
+                    0
+                ).getDate();
+                months--;
+            }
 
-            return [days, months, years];
+            // Cross years
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+
+            return [years, months, days];
         }
     </script>
 </body>
