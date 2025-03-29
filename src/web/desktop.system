@@ -62,9 +62,6 @@
             opacity: 0;
             top: 0;
             left: 0;
-            -webkit-transition: opacity 2s ease-in-out;
-            -moz-transition: opacity 2s ease-in-out;
-            -o-transition: opacity 2s ease-in-out;
             transition: opacity 2s ease-in-out;
 
         }
@@ -78,10 +75,6 @@
             left: 0px;
             top: 0px;
             user-select: none;
-            -moz-user-select: none;
-            -webkit-user-drag: none;
-            -webkit-user-select: none;
-            -ms-user-select: none;
         }
 
         .showBackground {
@@ -405,8 +398,6 @@
         body.darkTheme #listMenu {
             background-color: var(--body_background, #242330);
             color: var(--text_color, white);
-            -webkit-box-shadow: 7px -6px 7px -1px rgba(92, 92, 92, 0.2);
-            -moz-box-shadow: 7px -6px 7px -1px rgba(92, 92, 92, 0.2);
             box-shadow: 7px -6px 7px -1px rgba(92, 92, 92, 0.2);
         }
 
@@ -572,8 +563,6 @@
 
             outline: none;
             border: 1px solid #0c0c0f;
-            -webkit-box-shadow: none;
-            -moz-box-shadow: none;
             box-shadow: none;
 
         }
@@ -805,8 +794,6 @@
             padding-bottom: 8px;
 
             box-shadow: 6px 8px 13px 2px rgba(191, 191, 191, 0.13);
-            -webkit-box-shadow: 6px 8px 13px 2px rgba(191, 191, 191, 0.13);
-            -moz-box-shadow: 6px 8px 13px 2px rgba(191, 191, 191, 0.13);
         }
 
         #quickAccessPanel .mxmenu {
@@ -850,8 +837,6 @@
         }
 
         body.darkTheme #quickAccessPanel {
-            -webkit-box-shadow: -5px 4px 7px -1px rgba(92, 92, 92, 0.2);
-            -moz-box-shadow: -5px 4px 7px -1px rgba(92, 92, 92, 0.2);
             box-shadow: -5px 4px 7px -1px rgba(92, 92, 92, 0.2);
         }
 
@@ -1005,14 +990,7 @@
         }
 
         .blink-image {
-            -moz-animation: blink normal 2s infinite ease-in-out;
-            /* Firefox */
-            -webkit-animation: blink normal 2s infinite ease-in-out;
-            /* Webkit */
-            -ms-animation: blink normal 2s infinite ease-in-out;
-            /* IE */
-            animation: blink normal 2s infinite ease-in-out;
-            /* Opera and prob css3 final iteration */
+            animation: blink 2s infinite ease-in-out;
         }
 
         /*
@@ -1025,8 +1003,6 @@
             background: white;
             padding: 10px;
             border: 1px solid #2c2c2c;
-            -webkit-box-shadow: 6px 5px 10px -3px rgba(0, 0, 0, 0.75);
-            -moz-box-shadow: 6px 5px 10px -3px rgba(0, 0, 0, 0.75);
             box-shadow: 6px 5px 10px -3px rgba(0, 0, 0, 0.75);
             padding: 2px;
             word-wrap: break-word;
@@ -3781,6 +3757,7 @@
             });
         }
 
+        let lastScreenWidth, lastScreenHeight;
         function redrawDesktopGrids() {
             var iheight = 106;
             var iwidth = 70;
@@ -3797,6 +3774,16 @@
             }
 
             iconSize = [iwidth, iheight];
+
+            // Skip if the screen size hasn't changed
+            if (
+                window.innerWidth === lastScreenWidth &&
+                window.innerHeight === lastScreenHeight
+            ) return;
+
+            lastScreenWidth = window.innerWidth;
+            lastScreenHeight = window.innerHeight;
+
             var screenHeight = window.innerHeight;
             var screenWidth = window.innerWidth;
 
