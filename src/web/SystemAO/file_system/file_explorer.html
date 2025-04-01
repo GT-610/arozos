@@ -1776,31 +1776,45 @@
             });
 
             //This function calculate and offset the context menu to not go out of the window area
-            function calculateContextMenuOffsets(evt) {
-                // Cache the context menu dimensions to avoid repeated DOM queries
-                const menuWidth = $("#contextmenu").width();
-                const menuHeight = $("#contextmenu").height();
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
+            function calculateContextMenuOffsets(e) {
+                // Get accurate mouse position
+                const win = {
+                    w: Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0),
+                    h: Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
+                };
 
-                // Calculate initial position based on mouse coordinates
-                let leftPos = evt.pageX;
-                let topPos = evt.pageY;
+                // Get context menu size
+                const menu = document.getElementById('contextmenu');
+                const rect = menu.getBoundingClientRect();
+                const menuW = rect.width || menu.offsetWidth;
+                const menuH = rect.height || menu.offsetHeight;
 
-                // Adjust left position if the menu would overflow the right boundary
-                if (leftPos + menuWidth > windowWidth) {
-                    leftPos = Math.max(0, windowWidth - menuWidth);
-                }
+                // Scroll offset
+                const scrollX = window.scrollX || document.documentElement.scrollLeft;
+                const scrollY = window.scrollY || document.documentElement.scrollTop;
 
-                // Adjust top position if the menu would overflow the bottom boundary
-                if (topPos + menuHeight > windowHeight) {
-                    topPos = Math.max(0, windowHeight - menuHeight);
-                }
+                // Calculate base position
+                const baseX = e.clientX ?? e.pageX - scrollX;
+                const baseY = e.clientY ?? e.pageY - scrollY;
+
+                // Locate
+                const finalX = Math.min(
+                    Math.max(0, baseX - (baseX + menuW > win.w ? menuW : 0)),
+                    win.w - menuW
+                );
+
+                const finalY = Math.min(
+                    Math.max(0, baseY - (baseY + menuH > win.h ? menuH : 0)),
+                    win.h - menuH
+                );
+
+                // Detect RTL language (eg. Arabic)
+                const isRTL = document.documentElement.dir === 'rtl';
 
                 // Apply the calculated positions to the context menu
                 $("#contextmenu").css({
-                    left: leftPos + "px",
-                    top: topPos + "px"
+                    left: isRTL ? win.w - finalX - menuW : finalX + "px",
+                    top: finalY + "px"
                 });
             }
 
@@ -2248,7 +2262,7 @@
                     filenameBackups.push($(this).attr("filename"));
                 });
             }
-            console.log(filenameBackups);
+            // console.log(filenameBackups); // DEBUG use
             updateCtrlDisplay();
             listDirectory(currentPath, function () {
                 if (keepSelectedItems) {
