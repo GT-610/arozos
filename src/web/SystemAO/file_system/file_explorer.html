@@ -846,32 +846,23 @@
                 });
             }
 
-
-
-
             //Create a timer to check change in current folder
             setInterval(function () {
-                if (enableAutoRefresh == false) {
+                if (!enableAutoRefresh || !currentPath) {
                     return;
                 }
-                let currentPagePath = currentPath;
+                const currentPathAtCheck = currentPath;
                 getDirHash(function (hash) {
-                    if (hash.error !== undefined) {
-                        //Something went wrong. Ignore this request
-                        console.log(hash.error)
-                    } else {
-                        //Check if the hash match with the last hash && user is still on the same page
-                        if (hash != currentPathHash && currentPagePath == currentPath) {
-                            //console.log(currentPathHash, hash);
-                            refreshList();
-                            currentPathHash = hash;
-                            if (currentPath == "user:/") {
-                                //Reload the User root folder list
-                                initRootDirs();
-                            }
+                    if (hash.error) {
+                        return console.error(hash.error);
+                    }
+                    if (hash !== currentPathHash && currentPath === currentPathAtCheck) {
+                        refreshList();
+                        currentPathHash = hash;
+                        if (currentPath === "user:/") {
+                            initRootDirs();
                         }
                     }
-
                 });
             }, 5000);
 
@@ -903,18 +894,26 @@
             $.ajax({
                 url: "../../system/file_system/listRoots?user=true",
                 success: function (data) {
-                    $("#userroot").html("");
-                    for (var i = 0; i < data.length; i++) {
-                        var thisRootObject = data[i];
-                        if (thisRootObject.IsDir == true && !(thisRootObject.Filename == ".cache" || thisRootObject.Filename == ".trash")) {
-                            //Files will not be listed in the root directory list
-                            var specifcRootInfo = getUserRootIcons(thisRootObject.Filename);
-                            var icon = specifcRootInfo[0];
-                            var displayName = specifcRootInfo[1];
-                            var vpath = thisRootObject.Filepath;
-                            $("#userroot").append(`<div class="dir item userrootfolder" filepath="${vpath}" type="folder" onclick="openthis(this);"><i class="${icon} rightmargin icon"></i> ${displayName}</div>`);
-                        }
-                    }
+                    const userRootContainer = document.getElementById('userroot');
+                    userRootContainer.innerHTML = ''; // Clear existing content
+
+                    // Generate HTML
+                    const filteredData = data
+                        .filter(item => item.IsDir && !['.cache', '.trash'].includes(item.Filename))
+                        .map(item => {
+                            const [icon, displayName] = getUserRootIcons(item.Filename);
+                            return `
+                            <div class="dir item userrootfolder" 
+                                filepath="${item.Filepath}" 
+                                type="folder" 
+                                onclick="openthis(this);">
+                                <i class="${icon} rightmargin icon"></i> ${displayName}
+                            </div>
+                        `;
+                        })
+                        .join('');
+
+                    userRootContainer.innerHTML = filteredData;
                 }
             });
 
@@ -922,66 +921,67 @@
             $.ajax({
                 url: "../../system/file_system/listRoots",
                 success: function (data) {
-                    $("#storageroot").html("");
-                    for (var i = 0; i < data.length; i++) {
-                        var thisRoot = data[i];
-                        var displayName = thisRoot.RootName;
-                        var rootPath = thisRoot.RootPath;
-                        $("#storageroot").append(`<div class="dir item vroot" filepath="${rootPath}" type="folder" rootname="${displayName}" onclick="openthis(this);"><i class="disk outline rightmargin icon"></i> ${displayName} (${rootPath})</div>`);
-                    }
+                    const storageRootContainer = document.getElementById('storageroot');
+                    storageRootContainer.innerHTML = ''; // Clear existing content
+
+                    // Generate HTML
+                    const htmlContent = data.map(root => `
+                        <div class="dir item vroot" 
+                            filepath="${root.RootPath}" 
+                            type="folder" 
+                            rootname="${root.RootName}" 
+                            onclick="openthis(this);">
+                            <i class="disk outline rightmargin icon"></i> 
+                            ${root.RootName} (${root.RootPath})
+                        </div>
+                    `).join('');
+                    storageRootContainer.innerHTML = htmlContent;
                     highlightCurrentRoot();
                 }
             });
         }
 
         function highlightCurrentRoot() {
-            //Highlight the target vroot name on the side bar
-            $(".vroot.active").removeClass("active");
-            $(".vroot").each(function () {
-                let rootname = $(this).attr("filepath");
-                if ((currentPath.toLowerCase()).startsWith((rootname.toLowerCase()))) {
-                    //This is the root we are currently in
-                    $(this).addClass("active");
+            const currentPathLower = currentPath.toLowerCase();
+            const roots = document.querySelectorAll('.vroot');
+
+            let bestMatch = null;
+            let bestLength = 0;
+
+            roots.forEach(root => {
+                const rootname = root.getAttribute('filepath').toLowerCase();
+
+                if (currentPathLower.startsWith(rootname) && rootname.length > bestLength) {
+                    bestMatch = root;
+                    bestLength = rootname.length;
                 }
+
+                root.classList.remove('active'); // Remove active class from all roots
             });
+
+            if (bestMatch) bestMatch.classList.add('active');
         }
 
 
+        const folderIconMap = {
+            default: { icon: "folder open", label: "" }, // 显式默认值
+
+            desktop: { icon: "computer", label: "sidebar/vroot/desktop" },
+            document: { icon: "file text outline", label: "sidebar/vroot/document" },
+            music: { icon: "music", label: "sidebar/vroot/music" },
+            photo: { icon: "image", label: "sidebar/vroot/photo" },
+            video: { icon: "video", label: "sidebar/vroot/video" },
+            trash: { icon: "trash", label: "sidebar/vroot/trash" },
+            download: { icon: "download", label: "sidebar/vroot/download" },
+            www: { icon: "globe", label: "sidebar/vroot/web" },
+            model: { icon: "cube", label: "sidebar/vroot/model" },
+            appdata: { icon: "code", label: "sidebar/vroot/appdata" }
+        };
+
         function getUserRootIcons(foldername) {
-            var icon = "folder open";
-            var name = foldername;
-            foldername = foldername.toLowerCase();
-            if (foldername == "desktop") {
-                icon = "computer";
-                name = applocale.getString("sidebar/vroot/desktop", name);
-            } else if (foldername == "document") {
-                icon = "file text outline";
-                name = applocale.getString("sidebar/vroot/document", name);
-            } else if (foldername == "music" || foldername == "audio") {
-                icon = "music";
-                name = applocale.getString("sidebar/vroot/music", name);
-            } else if (foldername == "photo" || foldername == "picture") {
-                icon = "image";
-                name = applocale.getString("sidebar/vroot/photo", name);
-            } else if (foldername == "video" || foldername == "film") {
-                icon = "video";
-                name = applocale.getString("sidebar/vroot/video", name);
-            } else if (foldername == "trash" || foldername == "bin" || foldername == "rubbish") {
-                icon = "trash"
-                name = applocale.getString("sidebar/vroot/trash", name);
-            } else if (foldername == "download") {
-                icon = "download"
-                name = applocale.getString("sidebar/vroot/download", name);
-            } else if (foldername == "www" || foldername == "web" || foldername == "mysite") {
-                icon = "globe"
-                name = applocale.getString("sidebar/vroot/web", name);
-            } else if (foldername == "model") {
-                icon = "cube"
-                name = applocale.getString("sidebar/vroot/model", name);
-            } else if (foldername == "appdata") {
-                icon = "code"
-                name = applocale.getString("sidebar/vroot/appdata", name);
-            }
+            const key = foldername.toLowerCase();
+            const { icon = "folder open", label } = folderIconMap[key] || {};
+            const name = applocale.getString(label, foldername);
             return [icon, name];
         }
 
@@ -2236,7 +2236,6 @@
         }
 
         //=================================== FILE OPERATIONS ========================
-
         function refreshList(callback = undefined, keepSelectedItems = false) {
             if (searchMode == true) {
                 //Refresh the search result
@@ -2254,18 +2253,18 @@
 
             let filenameBackups = [];
             if (keepSelectedItems) {
-                //Backup all the selected filenames
-                $(".fileObject.selected").each(function () {
-                    filenameBackups.push($(this).attr("filename"));
+                const selectedEls = document.querySelectorAll('.fileObject.selected');
+                selectedEls.forEach(el => {
+                    filenameBackups.push(el.getAttribute('filename'));
                 });
             }
             // console.log(filenameBackups); // DEBUG use
             updateCtrlDisplay();
             listDirectory(currentPath, function () {
                 if (keepSelectedItems) {
-                    $(".fileObject").each(function () {
-                        if (filenameBackups.includes($(this).attr("filename"))) {
-                            $(this).addClass("selected");
+                    fileObjects.forEach(el => {
+                        if (filenameBackups.includes(el.getAttribute('filename'))) {
+                            el.classList.add('selected');
                         }
                     });
                 }
