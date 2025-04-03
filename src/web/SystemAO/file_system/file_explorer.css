@@ -309,6 +309,13 @@ body.darkTheme .ui.icon.button{
     height: 64px;
 }
 
+
+.navibar .fileoprSmallBtnMobile .opricon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+}
+
 .ui.selection.dropdown{
     background-color: var(--dropdown_bg) !important;
     color: var(--dropdown_txt) !important;

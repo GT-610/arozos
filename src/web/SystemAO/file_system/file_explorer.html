@@ -132,26 +132,26 @@
 
             </div>
             <!-- File Operation Buttons -->
-            <div class="fileoprBtnMobile" title="Open"
-                onclick="openViaButton(); toggleMobileSidebar(false, exitMultiSelectMode);"><img class="opricon"
-                    src="img/opr/open.svg">
-                <p class="oprtxt" locale="fileopr/Open">Open</p>
-            </div>
-            <div class="fileoprBtnMobile" title="Copy"
-                onclick="copy(); toggleMobileSidebar(false, exitMultiSelectMode);"><img class="opricon"
-                    src="img/opr/copy.svg">
-                <p class="oprtxt" locale="fileopr/Copy">Copy</p>
-            </div>
-            <div class="fileoprBtnMobile" title="Paste"
-                onclick="paste(); toggleMobileSidebar(false, exitMultiSelectMode);"><img class="opricon"
-                    src="img/opr/paste.svg">
-                <p class="oprtxt" locale="fileopr/Paste">Paste</p>
-            </div>
-            <div class="fileoprBtnMobile" title="Delete"
+            <button class="fileoprSmallBtnMobile" title="Open"
+                onclick="openViaButton(); toggleMobileSidebar(false, exitMultiSelectMode);">
+                <img class="opricon" src="img/opr/open.svg">
+                <span class="oprtxt" locale="fileopr/Open">Open</span>
+            </button>
+            <button class="fileoprSmallBtnMobile" title="Copy"
+                onclick="copy(); toggleMobileSidebar(false, exitMultiSelectMode);">
+                <img class="opricon" src="img/opr/copy.svg">
+                <span class="oprtxt" locale="fileopr/Copy">Copy</span>
+            </button>
+            <button class="fileoprSmallBtnMobile" title="Paste"
+                onclick="paste(); toggleMobileSidebar(false, exitMultiSelectMode);">
+                <img class="opricon" src="img/opr/paste.svg">
+                <span class="oprtxt" locale="fileopr/Paste">Paste</span>
+            </button>
+            <button class="fileoprSmallBtnMobile" title="Delete"
                 onclick="deleteFile(); toggleMobileSidebar(false, exitMultiSelectMode);"><img class="opricon"
                     src="img/opr/delete.svg">
-                <p class="oprtxt" locale="fileopr/Delete">Delete</p>
-            </div>
+                <span class="oprtxt" locale="fileopr/Delete">Delete</span>
+            </button>
             <button class="fileoprSmallBtnMobile" title="Multi Select"
                 onclick="toggleCtrl(); toggleMobileSidebar(false);"> <i class="mouse pointer icon"></i> <span
                     locale="fileopr/Multi Select">Multi-select</span></button><br>
