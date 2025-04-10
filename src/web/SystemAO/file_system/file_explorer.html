@@ -62,7 +62,7 @@
         <div class="fileoprGroupDivider" style="display: inline-block; vertical-align: top;"></div>
         <button class="twolines fileOprBtn" title="New Folder" onclick="newFolder(); exitMultiSelectMode();"><img
                 class="opricon" src="img/opr/new_folder.svg">
-            <p class="oprtxt wideScreenOnly" locale="fileopr/New Folder">New<br>Folder</p>
+            <p class="oprtxt wideScreenOnly" locale="fileopr/New Folder">New Folder</p>
         </button>
         <div class="fileoprGroupDivider tabletAndDesktopOnly" style="display: inline-block; vertical-align: top;">
             <button class="fileoprSmallBtn" title="New File" onclick="newfile();"><i class="file outline icon"></i>
@@ -714,12 +714,13 @@
         const $fileList = $("#fileList");
         const $sortingDropdownSelector = $("#sortingMethodSelector");
 
-        //Intiiation functions
-        $(document).ready(function () {
+        //Initiatize functions
+        $(document).ready(() => {
             $("#contextmenu").css("display", "hidden");
+
+            // Load locale
             if (applocale) {
-                //Applocale found. Do localization
-                applocale.init("../locale/file_explorer.json", function () {
+                applocale.init("../locale/file_explorer.json", () => {
                     applocale.translate();
                     initRootDirs();
                     initSystemInfo();
@@ -730,37 +731,35 @@
                     initWindowSizes(false);
                 });
             } else {
-                //Applocale not found. Is this a trim down version of ArozOS?
+                // Fallback to English if no locale is found
                 applocale = {
-                    getString: function (key, original) {
-                        return original;
-                    }
-                }
+                    getString: (key, original) => original
+                };
                 initRootDirs();
                 initSystemInfo();
                 initUploadMode();
                 $(".dropdown").dropdown();
             }
 
+            // Mobile layout
             if (isMobile) {
-                //Mobile css adjustment
                 sideBarShown = false;
-                $("#directorySidebar").hide();
-                $("#directorySidebar").css("width", window.innerWidth + "px");
+                $("#directorySidebar").hide().css("width", `${window.innerWidth}px`);
                 $("body").css("overflow", "hidden");
                 $("#navibar").addClass("mobile");
                 directorySidebarWidth = window.innerWidth;
+
                 $("#folderView").css({
                     "padding-right": "1em",
                     "padding-left": "1em",
-                    "padding-top": "1em",
+                    "padding-top": "1em"
                 });
 
-                //Move the sort menu into the desktop address bar gap
+                // Move the sort menu into the desktop address bar gap
                 $(".viewportBtns").addClass("mobile");
                 $(".addressBar").append($(".viewportBtns"));
 
-                //Move the sorting dropdown to sidebar
+                // Move the sorting dropdown to sidebar
                 $("#mobileSortDropdown").append($sortingDropdownSelector);
 
                 $(".desktopOnly").hide();
@@ -769,96 +768,69 @@
                 $(".mobileOnly").hide();
                 $(".desktopOnly").show();
             }
+
             //Initialize view mode buttons
             updateViewmodeButtons();
             loadListModeFromDB();
 
             //Initialize system theme
-            loadPreference("file_explorer/theme", function (data) {
-                if (data.error === undefined) {
-                    if (data == "darkTheme") {
+            loadPreference("file_explorer/theme", data => {
+                if (!data.error) {
+                    if (data === "darkTheme") {
                         toggleDarkTheme();
-                    } else {
-                        //White theme
-
                     }
                 }
             });
 
             //Initialize properties view
-            if (localStorage.getItem("file_explorer/viewProperties") == "true") {
+            if (localStorage.getItem("file_explorer/viewProperties") === "true") {
                 $("#togglePropertiesViewBtn").click();
             }
 
 
-            if (window.location.hash != "") {
-                //Check if the hash is standard open protocol. If yes, translate it
+            // Handle window hash
+            if (window.location.hash) {
+                const hashPath = decodeURIComponent(window.location.hash.substring(1));
+                currentPath = hashPath.endsWith("/") ? hashPath : `${hashPath}/`;
+
                 if (ao_module_loadInputFiles() === null) {
-                    //Window location hash set. List the desire directory
-                    currentPath = window.location.hash.substring(1, window.location.hash.length);
-                    if (currentPath.substring(currentPath.length - 1) != "/") {
-                        currentPath = currentPath + "/";
-                    }
-                    currentPath = decodeURIComponent(currentPath);
-                    loadListModeFromDB(function () {
-                        listDirectory(currentPath);
-                    });
-
+                    loadListModeFromDB(() => listDirectory(currentPath));
                 } else {
-                    //This is ao_module load file input. Handle the file opening
-                    var filelist = ao_module_loadInputFiles();
-                    if (filelist.length > 0) {
-                        filelist = filelist[0];
-                        //Check if this is folder or file. Only opendir when it is folder
-                        //Updates 27-12-2020: Open folder and highlight the file if it is file
-                        if (filelist.filename.includes(".") == false) {
-                            //Try to open it and overwrite the hash to filesystem hash
-                            loadListModeFromDB(function () {
-                                listDirectory(filelist.filepath);
-                            });
-                        } else {
-                            //File. Open its parent folder and highlight the target file if exists
-                            var parentdir = filelist.filepath.split("/");
-                            let focusFilename = JSON.parse(JSON.stringify(filelist.filename));
-                            parentdir.pop();
-                            parentdir = parentdir.join("/");
-                            loadListModeFromDB(function () {
-                                listDirectory(parentdir, function () {
-                                    if (focusFilename != "") {
-                                        //Timeout to give the DOM time to render
-                                        //DO NOT REPLACE THIS WITH listDirectoryAndHighlight
-                                        //Additional delay are required on page load
-                                        setTimeout(function () {
-                                            focusFileObject(focusFilename);
-                                        }, 300);
+                    const filelist = ao_module_loadInputFiles()[0];
+                    if (!filelist.filename.includes(".")) {
+                        loadListModeFromDB(() => listDirectory(filelist.filepath));
+                    } else {
+                        const parentdir = filelist.filepath.split("/").slice(0, -1).join("/");
+                        const focusFilename = JSON.parse(JSON.stringify(filelist.filename));
 
-                                    }
-                                })
+                        loadListModeFromDB(() => {
+                            listDirectory(parentdir, () => {
+                                if (focusFilename) {
+                                    setTimeout(() => focusFileObject(focusFilename), 300);
+                                }
                             });
-                        }
+                        });
                     }
                 }
             } else {
-
-                //Initialized directory views
-                loadListModeFromDB(function () {
-                    listDirectory(currentPath);
-                });
+                loadListModeFromDB(() => listDirectory(currentPath));
             }
 
             //Create a timer to check change in current folder
-            setInterval(function () {
-                if (!enableAutoRefresh || !currentPath) {
-                    return;
-                }
+            setInterval(() => {
+                if (!enableAutoRefresh || !currentPath) return;
+
                 const currentPathAtCheck = currentPath;
-                getDirHash(function (hash) {
+                getDirHash(hash => {
                     if (hash.error) {
-                        return console.error(hash.error);
+                        console.error(hash.error);
+                        return;
                     }
+
                     if (hash !== currentPathHash && currentPath === currentPathAtCheck) {
                         refreshList();
                         currentPathHash = hash;
+
                         if (currentPath === "user:/") {
                             initRootDirs();
                         }
@@ -890,55 +862,66 @@
 
         //Initiate the sidebar contents 
         function initRootDirs() {
-            //Load user directories
-            $.ajax({
-                url: "../../system/file_system/listRoots?user=true",
-                success: function (data) {
+            // Load user directories
+            fetch("../../system/file_system/listRoots?user=true")
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
                     const userRootContainer = document.getElementById('userroot');
-                    userRootContainer.innerHTML = ''; // Clear existing content
+                    userRootContainer.innerHTML = ''; // Clear
 
-                    // Generate HTML
-                    const filteredData = data
-                        .filter(item => item.IsDir && !['.cache', '.trash'].includes(item.Filename))
-                        .map(item => {
-                            const [icon, displayName] = getUserRootIcons(item.Filename);
+                    const filteredHTML = data
+                        .filter(({ IsDir, Filename }) => IsDir && !['.cache', '.trash'].includes(Filename))
+                        .map(({ Filename, Filepath }) => {
+                            const [icon, displayName] = getUserRootIcons(Filename);
                             return `
-                            <div class="dir item userrootfolder" 
-                                filepath="${item.Filepath}" 
-                                type="folder" 
-                                onclick="openthis(this);">
-                                <i class="${icon} rightmargin icon"></i> ${displayName}
-                            </div>
-                        `;
+                    <div class="dir item userrootfolder" 
+                        filepath="${Filepath}" 
+                        type="folder" 
+                        onclick="openthis(this)">
+                        <i class="${icon} rightmargin icon"></i>${displayName}
+                    </div>
+                `;
                         })
                         .join('');
 
-                    userRootContainer.innerHTML = filteredData;
-                }
-            });
+                    userRootContainer.innerHTML = filteredHTML;
+                })
+                .catch(error => {
+                    console.error("Failed to load user directories:", error);
+                });
 
             //Load other storage devices
-            $.ajax({
-                url: "../../system/file_system/listRoots",
-                success: function (data) {
+            fetch("../../system/file_system/listRoots")
+                .then(response => response.json())
+                .then(data => {
                     const storageRootContainer = document.getElementById('storageroot');
                     storageRootContainer.innerHTML = ''; // Clear existing content
 
-                    // Generate HTML
-                    const htmlContent = data.map(root => `
-                        <div class="dir item vroot" 
-                            filepath="${root.RootPath}" 
-                            type="folder" 
-                            rootname="${root.RootName}" 
-                            onclick="openthis(this);">
-                            <i class="disk outline rightmargin icon"></i> 
-                            ${root.RootName} (${root.RootPath})
-                        </div>
-                    `).join('');
+                    // Generate HTML with template literals and arrow functions
+                    const htmlContent = data
+                        .map(({ RootPath, RootName }) => `
+                            <div class="dir item vroot" 
+                                filepath="${RootPath}" 
+                                type="folder" 
+                                rootname="${RootName}" 
+                                onclick="openthis(this);">
+                                <i class="disk outline rightmargin icon"></i> 
+                                ${RootName} (${RootPath})
+                            </div>
+                        `)
+                        .join('');
+
                     storageRootContainer.innerHTML = htmlContent;
                     highlightCurrentRoot();
-                }
-            });
+                })
+                .catch(error => {
+                    console.error("Failed to load storage devices:", error);
+                });
         }
 
         function highlightCurrentRoot() {
@@ -1903,7 +1886,7 @@
                     $("#contextmenu").find(".folderonly").hide();
                     $("#contextmenu").find(".fileonly").show();
                 }
-                console.log($(this).attr("type"));
+                // console.log($(this).attr("type")); // DEBUG
 
                 if (searchMode == true) {
                     $("#contextmenu").find(".shareonly").show();
@@ -1979,38 +1962,58 @@
             });
 
             //Handle right click on storage roots
-            $("#storageroot").off("contextmenu").on("contextmenu", function (e) {
-                if ($(e.target).is("i")) {
-                    e.target = e.target.parentElement;
-                }
+            function handleStorageRootContextMenu() {
+                // Cache
+                const $contextMenu = $("#contextmenu");
+                const $storageRoot = $("#storageroot");
 
-                $("#storageroot").find(".dir.item").each(function () {
-                    if ($(this).attr("rootname") != undefined) {
-                        $(this).removeClass("active");
-                    }
+                // Bind contextmenu event
+                $storageRoot.off("contextmenu").on("contextmenu", function (e) {
+                    e.preventDefault(); // Prevent browser's default context menu
+
+                    const $target = $(e.target).closest(".dir.item");
+                    if (!$target.length || !$target.attr("rootname")) return;
+
+                    updateActiveRoot($target);
+
+                    showContextMenuForVroot($target, e);
                 });
 
-                if ($(e.target).attr("rootname") != undefined) {
-                    //Correct one. Show vroot functions
-                    e.preventDefault();
-                    var rootname = $(e.target).attr("rootname");
-                    $(e.target).addClass("active");
-                    $("#contextmenu").find(".item").hide();
-                    $("#contextmenu").find(".vroothide").hide();
-                    $("#contextmenu").find(".vrootonly").show();
-
-                    //Show context menu
-                    calculateContextMenuOffsets(e);
-
-                    $("#contextmenu").addClass("visible");
-                    //Handle CSS offset of the contextmenu
-                    if ($("#contextmenu").offset().top < 0) {
-                        $("#contextmenu").css("top", "0px");
-                    } else if ($("#contextmenu").offset().top + $("#contextmenu").height() > window.innerHeight) {
-                        $("#contextmenu").css("top", window.innerHeight - $("#contextmenu").height() + "px");
-                    }
+                // Update active root
+                function updateActiveRoot($target) {
+                    $storageRoot.find(".dir.item").removeClass("active"); // Remove active class from all items
+                    $target.addClass("active");
                 }
-            });
+
+                // Show context menu
+                function showContextMenuForVroot($target, e) {
+                    // Hide other context menu items
+                    $contextMenu.find(".item").hide();
+                    $contextMenu.find(".vroothide").hide();
+                    $contextMenu.find(".vrootonly").show();
+
+                    // Set the position of the context menu
+                    calculateContextMenuOffsets(e);
+                    $contextMenu.addClass("visible");
+
+                    // Make sure the context menu stays within the viewport
+                    adjustContextMenuPosition($contextMenu);
+                }
+
+                // Adjust context menu position
+                function adjustContextMenuPosition($menu) {
+                    const menuHeight = $menu.outerHeight();
+                    const windowHeight = window.innerHeight;
+                    const topOffset = Math.min(e.clientY, windowHeight - menuHeight);
+
+                    $menu.css({
+                        left: Math.max(0, e.clientX),
+                        top: Math.max(0, topOffset),
+                    });
+                }
+            }
+
+            handleStorageRootContextMenu();
 
             $(document).on("click", function (evt) {
                 $(".contextmenu").removeClass("visible");
@@ -4529,23 +4532,17 @@
                                 } else {
                                     localStorage.setItem("ao/file_system/cutmode", "false");
                                 }
-
                             }
 
                             //Paste all the files to the current path
                             console.log(clipboard);
                             paste();
                         }
-
-
-
                     } catch (ex) {
                         console.log(ex);
                         msgbox("red remove", applocale.getString("message/decodeFilelistFail", "File drop failed. Unable to decode filelist."));
                     }
                 }
-
-
             }
 
         }
@@ -4568,32 +4565,7 @@
                         //WebKits
                         console.log("Upload Target", fileObject, rootpath);
                         uploadFile(fileObject, undefined, currentPath + rootpath);
-
                     } else {
-                        //Firefox. Special handling for root path.
-
-                        //Updates for Firefox 84.0.2 (64-bit), which changed minor implementation on relative path in folder updates
-                        //This section of code is deprecated since then
-                        /*
-                            //As firefox will keep its file input relative path, we need to remove the root folder
-                            //name from the rootpath passed in by the webkit API
-                            
-                            if (rootpath.substr(rootpath.length - 1, 1) == "/"){
-                                rootpath = rootpath.substr(0, rootpath.length - 1);
-                            }
-                            var rootpathInfo = rootpath.split("/");
-                            if (rootpathInfo.length > 1){
-                                //Uploading folder to folder. Extract the folder root name
-                                rootpathInfo.pop();
-                            }else{
-                                //Uploading file to folder. Do nothing
-                            }
-                            rootpath = rootpathInfo.join("/") + "/";
-
-                            console.log("Upload Target", fileObject, rootpath);
-                            uploadFile(fileObject, undefined, currentPath + rootpath);
-                        */
-                        //console.log(currentPath + rootpath);
                         uploadFile(fileObject, undefined, currentPath + base);
                     }
 
@@ -4675,53 +4647,37 @@
         }
 
         function initUploadMode() {
-            //Deprecated, will automatically decide which mode to use base on file size and disk space
-            /*
-            //Get the amount of RAM on the server side to check if low memory mode should be used.
-            $.ajax({
-                url: "../../system/info/getRAMinfo",
-                success: function(data){
-                    if (data.error !== undefined){
-                        //Permission denied or other reasons that cannot access harwdare info. Use default mode
-                        lowMemoryMode = true;
-                    }else{
-                        //Check if ramsize > 3.8GB. If yes, switch to large memory upload mode
-                        var memsize = JSON.parse(data);
-                        if (parseFloat(memsize)/ 1024 / 1024 / 1024 >= 3.8){
-                            console.log("[File Explorer] Entering large memory upload mode")
-                            lowMemoryMode = false;
-                        }
-                    }
-                },
-                error: function(){
-                    //Hardware mode disabled. Always use low memory upload mode instead
-                    lowMemoryMode = true;
-                }
-            });
-            */
-
             //Get the avaible space on tmp disk and decide the cutoff file size that need to directly write to disk
-            $.ajax({
-                url: "../../system/disk/space/tmp",
-                method: "POST",
-                data: {},
-                success: function (data) {
-                    if (data.error !== undefined) {
-                        console.log("[File Explorer] Unable to auto-detect huge file cutoff size: " + data.error);
-                    } else {
-                        if (!isNaN(data.Available) && data.Available > 0) {
-                            largeFileCutoffSize = data.Available / 16 - 4096;
-                            console.log("[File Explorer] Setting huge file cutoff size at: " + ao_module_utils.formatBytes(data.Available / 16));
-                        } else if (isNaN(data.Available)) {
-                            console.log("[File Explorer] Unable to read available tmp disk size. Using default huge file cutoff size.");
-                        }
+            async function getTmpDiskSpace() {
+                try {
+                    const response = await fetch("../../system/disk/space/tmp", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({})
+                    });
 
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                },
-                error: function () {
-                    //Hardware mode disabled. Use default value.
+
+                    const data = await response.json();
+
+                    if (data && data.error !== undefined) {
+                        console.log("[File Explorer] Unable to auto-detect huge file cutoff size: " + data.error);
+                    } else if (!isNaN(data?.Available) && data.Available > 0) {
+                        largeFileCutoffSize = data.Available / 16 - 4096;
+                        console.log("[File Explorer] Setting huge file cutoff size at: " + ao_module_utils.formatBytes(data.Available / 16));
+                    } else if (isNaN(data?.Available)) {
+                        console.log("[File Explorer] Unable to read available tmp disk size. Using default huge file cutoff size.");
+                    }
+                } catch (error) {
+                    console.error("[File Explorer] Failed to fetch tmp disk space:", error.message || error);
+                    console.log("[File Explorer] Using default huge file cutoff size.");
                 }
-            });
+            }
+            getTmpDiskSpace();
         }
 
         function uploadFile(file, uuid = undefined, targetDir = undefined) {
@@ -5626,25 +5582,29 @@
         //Toggle preview windows size from small to large mode,
         //set restoreDefault to true for force small interface
         function togglePreviewWindowSize(restoreDefault = false) {
-            if ($("#propertiesView").hasClass("small") && restoreDefault == false) {
-                //Set it to big
-                $("#propertiesView").css({
-                    "width": "500px",
-                    "min-width": "500px"
-                });
-                $("#propertiesView").removeClass("small").addClass("big");
-                $("#propertiesView").find(".sizeToggle").html(`<i class="compress icon"></i>`);
-                $("#propertiesView").find(".sizeToggle").attr("title", applocale.getString("sidebar/properties/shrink", "Shrink Properties Sidebar"));
-            } else {
-                //Set it to small
-                $("#propertiesView").css({
-                    "width": "300px",
-                    "min-width": "300px"
-                });
-                $("#propertiesView").removeClass("big").addClass("small");
-                $("#propertiesView").find(".sizeToggle").html(`<i class="expand icon"></i>`);
-                $("#propertiesView").find(".sizeToggle").attr("title", applocale.getString("sidebar/properties/expand", "Expand Properties Sidebar"));
-            }
+            const $propertiesView = $("#propertiesView");
+            const isSmall = $propertiesView.hasClass("small");
+
+            // 定义样式和图标配置
+            const sizeConfig = {
+                small: { width: "300px", minWidth: "300px", icon: "expand", titleKey: "sidebar/properties/expand" },
+                big: { width: "500px", minWidth: "500px", icon: "compress", titleKey: "sidebar/properties/shrink" }
+            };
+
+            // 根据当前状态和参数决定切换到哪种模式
+            const targetSize = (isSmall && !restoreDefault) ? "big" : "small";
+
+            // 更新样式和类名
+            $propertiesView.css({
+                "width": sizeConfig[targetSize].width,
+                "min-width": sizeConfig[targetSize].minWidth
+            });
+            $propertiesView.removeClass("small big").addClass(targetSize);
+
+            // 更新按钮图标和提示文字
+            const $sizeToggle = $propertiesView.find(".sizeToggle");
+            $sizeToggle.html(`<i class="${sizeConfig[targetSize].icon} icon"></i>`);
+            $sizeToggle.attr("title", applocale.getString(sizeConfig[targetSize].titleKey, "Expand Properties Sidebar"));
         }
 
         /*
