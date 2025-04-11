@@ -5340,10 +5340,11 @@
         }
 
         function bytesToSize(bytes) {
-            var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
-            if (bytes == 0) return '0 Byte';
-            var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-            return Math.round(bytes / Math.pow(1024, i) * 100, 2) / 100 + ' ' + sizes[i];
+            if (typeof bytes !== 'number' || bytes < 0) return 'Invalid Size';
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
+            if (bytes === 0) return '0 Byte';
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
         }
 
         function uuidv4() {
@@ -5451,18 +5452,19 @@
 
         //Update sorting method for file listing
         function updateSortingMethods() {
-            var method = $sortingDropdownSelector.val();
+            const method = $sortingDropdownSelector.val();
             sortMode = method;
 
-            //Save it to server side
+            // Save it to server side
             $.ajax({
                 url: "../../system/file_system/sortMode",
                 method: "POST",
-                data: { opr: "set", folder: currentPath, mode: sortMode },
-                success: function (data) {
-                    //console.log("Sort mode saved: " + data)
-                    refreshList();
-                }
+                data: { opr: "set", folder: currentPath, mode: sortMode }
+            }).done(data => {
+                // console.log("Sort mode saved: " + data);
+                refreshList();
+            }).fail(error => {
+                console.error("[File Explorer] Failed to update sorting method:", error);
             });
         }
 
@@ -5475,108 +5477,76 @@
                 url: "../../system/file_system/getProperties",
                 method: "POST",
                 data: { path: filepath },
-                success: function (data) {
+                success: data => {
                     if (data.error !== undefined) {
-                        //Failed to load 
-
-                    } else {
-                        let previewSidebar = $("#propertiesView");
-                        //Check the extension. If the extension is image supported 
-                        //by web browser, enable full resolution button
-                        let enableFullResButton = false;
-                        if (!data.IsDirectory && data.Basename.indexOf(".") >= 0) {
-                            let ext = data.Basename.split(".").pop().toLowerCase();
-                            if (ext == "jpeg" || ext == "jpg" || ext == "webp" || ext == "png" || ext == "gif") {
-                                //Web preview-able formats
-
-                            }
-                        }
-
-                        //Load the preview 
-                        fetch("../../system/file_system/loadThumbnail?vpath=" + encodeURIComponent(data.VirtualPath))
-                            .then((response) => response.json())
-                            .then((imageData) => {
-                                if (imageData.error !== undefined || imageData.trim() == "") {
-                                    //Image load error.
-                                    if (data.IsDirectory) {
-                                        //Load the folder image
-                                        $(previewSidebar).find(".preview img").attr("src", "../../img/system/folder.svg")
-                                    } else {
-                                        let icon = "file outline";
-                                        let ext = data.Basename.split(".").pop().toLowerCase();
-                                        if (ext != "") {
-                                            icon = ao_module_utils.getIconFromExt(ext);
-                                        }
-                                        let imagePath = "../../img/desktop/files_icon/default/" + icon + ".png";
-                                        $(previewSidebar).find(".preview img").attr("src", imagePath);
-                                    }
-
-                                    return;
-                                }
-                                $(previewSidebar).find(".preview img").attr('src', "data:image/jpg;base64," + imageData);
-                            });
-
-                        //Render the remaining information
-                        $("#propertiesView").find(".filename").text(data.Basename);
-                        $("#propertiesView").find(".vpath").text(data.VirtualPath);
-
-                        let propTable = $("#propertiesView").find(".propertiesTable");
-                        let styleOverwrite = `min-width: 4em;`;
-                        $(propTable).html("");
-                        $(propTable).append(`<tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/filesize", "File Size")}
-                            </td>
-                            <td>
-                                ${bytesToSize(data.Filesize)}
-                            </td>
-                        </tr><tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/modtime", "Last Modification")}
-                            </td>
-                            <td>
-                                ${data.LastModTime}
-                            </td>
-                        </tr><tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/mimetype", "MIME Type")}
-                            </td>
-                            <td>
-                                ${data.MimeType}
-                            </td>
-                        </tr><tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/owner", "Owner")}
-                            </td>
-                            <td>
-                                ${data.Owner}
-                            </td>
-                        </tr><tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/permission", "Permission")}
-                            </td>
-                            <td>
-                                ${data.Permission}
-                            </td>
-                        </tr><tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/storepath", "Storage Path")}
-                            </td>
-                            <td style="word-break: break-all;">
-                                ${data.StoragePath}
-                            </td>
-                        </tr><tr>
-                            <td style="${styleOverwrite}">
-                                ${applocale.getString("sidebar/properties/vpath", "Virtualized Path")}
-                            </td>
-                            <td style="word-break: break-all;">
-                                ${data.VirtualPath}
-                            </td>
-                        </tr>`);
-
+                        // Failed to load properties, handle error here
+                        return;
                     }
+
+                    const previewSidebar = $("#propertiesView");
+
+                    // Check file extension for web-previewable formats
+                    const isWebPreviewable = !data.IsDirectory && /\.(jpeg|jpg|webp|png|gif)$/i.test(data.Basename);
+
+                    // Load the preview image or icon
+                    fetch(`../../system/file_system/loadThumbnail?vpath=${encodeURIComponent(data.VirtualPath)}`)
+                        .then(response => response.json())
+                        .then(imageData => {
+                            const $previewImg = $(previewSidebar).find(".preview img");
+                            if (imageData.error || imageData.trim() === "") {
+                                // Image load error or no thumbnail available
+                                const imagePath = data.IsDirectory
+                                    ? "../../img/system/folder.svg"
+                                    : `../../img/desktop/files_icon/default/${ao_module_utils.getIconFromExt(getExtFromPath(data.Basename)) || "file outline"}.png`;
+                                $previewImg.attr("src", imagePath);
+                            } else {
+                                $previewImg.attr("src", `data:image/jpg;base64,${imageData}`);
+                            }
+                        })
+                        .catch(error => console.error("Failed to load thumbnail:", error));
+
+                    // Render file information
+                    const { Basename, VirtualPath, Filesize, LastModTime, MimeType, Owner, Permission, StoragePath } = data;
+
+                    $(previewSidebar)
+                        .find(".filename")
+                        .text(Basename);
+                    $(previewSidebar)
+                        .find(".vpath")
+                        .text(VirtualPath);
+
+                    const propTable = $(previewSidebar).find(".propertiesTable");
+                    const styleOverwrite = "min-width: 4em;";
+
+                    const propertyRows = [
+                        ["sidebar/properties/filesize", "File Size", bytesToSize(Filesize)],
+                        ["sidebar/properties/modtime", "Last Modification", LastModTime],
+                        ["sidebar/properties/mimetype", "MIME Type", MimeType],
+                        ["sidebar/properties/owner", "Owner", Owner],
+                        ["sidebar/properties/permission", "Permission", Permission],
+                        ["sidebar/properties/storepath", "Storage Path", `<span style="word-break: break-all;">${StoragePath}</span>`],
+                        ["sidebar/properties/vpath", "Virtualized Path", `<span style="word-break: break-all;">${VirtualPath}</span>`]
+                    ];
+
+                    // Generate table rows dynamically
+                    propTable.html(propertyRows.map(([key, label, value]) => `
+                <tr>
+                    <td style="${styleOverwrite}">
+                        ${applocale.getString(key, label)}
+                    </td>
+                    <td>
+                        ${value}
+                    </td>
+                </tr>
+            `).join(""));
                 }
-            })
+            });
+        }
+
+        // Helper function to extract file extension
+        function getExtFromPath(filename) {
+            const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+            return extMatch ? extMatch[1].toLowerCase() : "";
         }
 
         //Toggle preview windows size from small to large mode,
@@ -5585,23 +5555,22 @@
             const $propertiesView = $("#propertiesView");
             const isSmall = $propertiesView.hasClass("small");
 
-            // 定义样式和图标配置
             const sizeConfig = {
                 small: { width: "300px", minWidth: "300px", icon: "expand", titleKey: "sidebar/properties/expand" },
                 big: { width: "500px", minWidth: "500px", icon: "compress", titleKey: "sidebar/properties/shrink" }
             };
 
-            // 根据当前状态和参数决定切换到哪种模式
+            // Determine the target size based on the current state
             const targetSize = (isSmall && !restoreDefault) ? "big" : "small";
 
-            // 更新样式和类名
+            // Update the properties view's width and min-width
             $propertiesView.css({
                 "width": sizeConfig[targetSize].width,
                 "min-width": sizeConfig[targetSize].minWidth
             });
             $propertiesView.removeClass("small big").addClass(targetSize);
 
-            // 更新按钮图标和提示文字
+            // Update the size toggle button
             const $sizeToggle = $propertiesView.find(".sizeToggle");
             $sizeToggle.html(`<i class="${sizeConfig[targetSize].icon} icon"></i>`);
             $sizeToggle.attr("title", applocale.getString(sizeConfig[targetSize].titleKey, "Expand Properties Sidebar"));
