@@ -809,7 +809,7 @@
                 "message/Recursive copy operation.":"递归复制操作",
                 "message/Source and destination paths are identical.":"文件来源与目标相同",
                 "message/Multiple files share is currently not supported":"不支持多个文件分享",
-                "message/folderisEmpty":"此文件夹为空。",
+                "message/folderIsEmpty":"此文件夹为空。",
 
                 "message/noMatchResults":"找不到匹配的文件",
                 "message/noMatchResultsDesc":"服务器找不到与此关键词匹配的文件",

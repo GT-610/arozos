@@ -3444,40 +3444,70 @@
 
         //OpenWith dialog
         function openWith() {
-            if ($(".selected.fileObject").length == 0) {
+            if (document.querySelectorAll('.selected.fileObject').length === 0) {
                 msgbox("question", applocale.getString("message/nofileSelected", "No file selected"));
                 return;
             }
             //Get a list of modules and append it into the selection list
-            $.get("../../system/modules/list", function (data) {
-                if (data.error !== undefined) {
-                    console.log(data.error);
-                } else {
-                    $("#openWithModuleList").html("");
-                    for (var i = 0; i < data.length; i++) {
-                        var thisModule = data[i];
-                        var supportFW = `<div class="ui horizontal mini icon label"><i class="window restore outline icon"></i> ${applocale.getString("opr/openwith/floatWindow", "Floating Window")}</div>`;
-                        var supportEmb = `<div class="ui horizontal mini icon label"><i class="folder open icon"></i> ${applocale.getString("opr/openwith/embedded", "File Input")}</div>`;
-                        if (!thisModule.SupportFW) {
-                            supportFW = "";
-                        }
-                        if (!thisModule.LaunchEmb) {
-                            supportEmb = "";
-                        }
-                        var launchInfo = encodeURIComponent(JSON.stringify(thisModule));
-                        $("#openWithModuleList").append(`<div class="item selectable openWithModule" launchInfo="${launchInfo}" onclick="selectOpenWithModule(this, event);" ondblclick="selectOpenWithModule(this, event); openWithSelectedModule();">
+            fetch('../../system/modules/list')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    const openWithModuleList = document.getElementById('openWithModuleList');
+                    openWithModuleList.innerHTML = '';
+
+                    // Create a document fragment to hold the items
+                    const fragment = document.createDocumentFragment();
+
+                    data.forEach((thisModule) => {
+                        // Support labels
+                        let supportFW = `<div class="ui horizontal mini icon label"><i class="window restore outline icon"></i> ${applocale.getString("opr/openwith/floatWindow", "Floating Window")}</div>`;
+                        let supportEmb = `<div class="ui horizontal mini icon label"><i class="folder open icon"></i> ${applocale.getString("opr/openwith/embedded", "File Input")}</div>`;
+
+                        if (!thisModule.SupportFW) supportFW = '';
+                        if (!thisModule.LaunchEmb) supportEmb = '';
+
+                        // HTML
+                        const itemHTML = `
+                            <div class="item selectable openWithModule" launchInfo="${encodeURIComponent(JSON.stringify(thisModule))}">
                                 <img class="ui avatar image" src="../../${thisModule.IconPath}">
                                 <div class="content" style="padding-left:12px;">
                                     <div class="header">${thisModule.Name}</div>
                                     <div class="description">
-                                        ${supportFW}
-                                        ${supportEmb}
+                                        ${supportFW}${supportEmb}
                                     </div>
                                 </div>
-                            </div>`);
-                    }
-                }
-            });
+                            </div>
+                        `;
+
+                        // Create DOM
+                        let item = document.createElement('div');
+                        item.innerHTML = itemHTML;
+                        item = item.firstElementChild;
+
+                        // Handle click event
+                        item.addEventListener('click', (event) => {
+                            selectOpenWithModule(item, event);
+                        });
+
+                        item.addEventListener('dblclick', (event) => {
+                            selectOpenWithModule(item, event);
+                            openWithSelectedModule();
+                        });
+
+                        // Add to fragment
+                        fragment.appendChild(item);
+                    });
+
+                    // Update DOM
+                    openWithModuleList.appendChild(fragment);
+                })
+                .catch(error => {
+                    console.error('[File Manager] Fetch error:', error);
+                });
+
             $(".openWithModule.popupbuttons").addClass("disabled");
 
             hideAllPopupWindows();
@@ -3486,7 +3516,6 @@
             }
             showPopupWrapper();
             $("#openWith").transition("slide left in");
-
         }
 
         //Functions for handling open with module selection and file opening
@@ -3740,7 +3769,7 @@
         }
 
         function openPathInNewWindow(path) {
-            console.log("Opening in new File Maanger: ", window.location.pathname + "#" + path);
+            console.log("Opening in new File Manager: ", String(path));
             ao_module_newfw({
                 url: window.location.pathname + "#" + path,
                 appicon: "SystemAO/file_system/img/small_icon.png",
@@ -4665,16 +4694,16 @@
                     const data = await response.json();
 
                     if (data && data.error !== undefined) {
-                        console.log("[File Explorer] Unable to auto-detect huge file cutoff size: " + data.error);
+                        console.log("[File Manager] Unable to auto-detect huge file cutoff size: " + data.error);
                     } else if (!isNaN(data?.Available) && data.Available > 0) {
                         largeFileCutoffSize = data.Available / 16 - 4096;
-                        console.log("[File Explorer] Setting huge file cutoff size at: " + ao_module_utils.formatBytes(data.Available / 16));
+                        console.log("[File Manager] Setting huge file cutoff size at: " + ao_module_utils.formatBytes(data.Available / 16));
                     } else if (isNaN(data?.Available)) {
-                        console.log("[File Explorer] Unable to read available tmp disk size. Using default huge file cutoff size.");
+                        console.log("[File Manager] Unable to read available tmp disk size. Using default huge file cutoff size.");
                     }
                 } catch (error) {
-                    console.error("[File Explorer] Failed to fetch tmp disk space:", error.message || error);
-                    console.log("[File Explorer] Using default huge file cutoff size.");
+                    console.error("[File Manager] Failed to fetch tmp disk space:", error.message || error);
+                    console.log("[File Manager] Using default huge file cutoff size.");
                 }
             }
             getTmpDiskSpace();
@@ -5464,7 +5493,7 @@
                 // console.log("Sort mode saved: " + data);
                 refreshList();
             }).fail(error => {
-                console.error("[File Explorer] Failed to update sorting method:", error);
+                console.error("[File Manager] Failed to update sorting method:", error);
             });
         }
 
