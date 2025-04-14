@@ -582,7 +582,6 @@
         },
         "zh-cn": {
             "name": "简体中文",
-            "fontFamily":"\"Microsoft YaHei\",\"SimHei\", \"PingFangSC-Medium\", \"STHeiti\"",
             "strings": {
                 "title/title": "文件管理器",
                 "menu/button/download": "下载所选",
@@ -1176,8 +1175,8 @@
                 "fileopr/New File": "새 파일",
                 "fileopr/New Folder": "새 폴더",
                 "fileopr/Upload": "업로드",
-                "fileopr/Create Zip": "<span style='font-size: 0.8em;'>압축 파일 만들기</span>",
-                "fileopr/Unzip Here": "<span style='font-size: 0.8em;'>여기에 압축 해제</span>",
+                "fileopr/Create Zip": "압축 파일 만들기",
+                "fileopr/Unzip Here": "여기에 압축 해제",
                 "fileopr/Rename": "이름 바꾸기",
                 "fileopr/Delete": "삭제",
                 "fileopr/Refresh": "새로고침",

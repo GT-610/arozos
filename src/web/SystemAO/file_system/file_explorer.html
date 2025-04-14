@@ -661,6 +661,7 @@
         let currentPathHash = "";   //The folder content hash
         let enableAutoRefresh = true; //Enable directory updates on file change
         let filesIconTheme = "default";
+        let hideTimer = null; // Messagebox hide timer
 
         //File operations
         let clipboard = []; //System clipboard
@@ -3740,12 +3741,11 @@
         }
 
         function openSelectedFolderInNewWindow() {
-            $(".fileObject.selected").each(function () {
-                if ($(this).attr("type") == "folder") {
-                    console.log($(this).attr('filepath'));
-                    openPathInNewWindow([$(this).attr('filepath')]);
+            document.querySelectorAll(".fileObject.selected").forEach(item => {
+                if (item.getAttribute("type") === "folder") {
+                    openPathInNewWindow([item.getAttribute('filepath')]);
                 }
-            })
+            });
         }
 
         function openSelectedVroot() {
@@ -4101,14 +4101,68 @@
         }
 
         function msgbox(icon, text, delay = 3000) {
-            $($(".msgbox").find("span")[0]).text(text);
-            $($(".msgbox").find("i")[0]).attr("class", icon + " icon");
-            $(".msgbox").stop().finish().slideDown('fast').delay(delay).slideUp('fast', function () {
-                initWindowSizes(false);
-            });
+            // Get the message box element
+            const msgboxEl = document.querySelector('.msgbox');
+            if (!msgboxEl) return;
+
+            // Define animation
+            const show = () => {
+                msgboxEl.style.display = 'block';
+                msgboxEl.style.maxHeight = '0';
+                msgboxEl.style.opacity = '0';
+
+                void msgboxEl.offsetHeight; // Re-trigger layout
+                msgboxEl.style.transition = 'all 0.2s ease';
+                msgboxEl.style.maxHeight = '50px';
+                msgboxEl.style.opacity = '1';
+                msgboxEl.classList.add('animating');
+            };
+
+            const hide = (callback) => {
+                msgboxEl.style.maxHeight = '0';
+                msgboxEl.style.opacity = '0';
+
+                const onTransitionEnd = () => {
+                    msgboxEl.style.display = 'none';
+                    msgboxEl.removeEventListener('transitionend', onTransitionEnd);
+                    msgboxEl.classList.remove('animating');
+                };
+                msgboxEl.addEventListener('transitionend', onTransitionEnd);
+            };
+
+            // Hide first if there is an animation in progress
+            if (msgboxEl.classList.contains('animating')) {
+                clearTimeout(hideTimer); // Clear existing timer
+                hide(() => {
+                    // Show the new one after the current animation ends
+                    updateContentAndShow();
+                });
+                return;
+            }
+
+            // Update and show the new message
+            function updateContentAndShow() {
+                const [iconEl, textEl] = msgboxEl.querySelectorAll('i, span');
+                if (iconEl) iconEl.className = `${icon} icon`;
+                if (textEl) textEl.textContent = text;
+
+                show();
+
+                // Set new timer
+                hideTimer = setTimeout(() => {
+                    hide();
+                    hideTimer = null; // Clear the timer
+                }, delay);
+            }
+
+            updateContentAndShow();
+
+            // Close button
+            msgboxEl.querySelector('.closeMsgButton').onclick = () => {
+                clearTimeout(hideTimer);
+                hide();
+            };
         }
-
-
 
         //Keyboard hotkey events
         $(document).keydown(function (event) {
