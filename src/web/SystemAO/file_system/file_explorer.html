@@ -661,7 +661,6 @@
         let currentPathHash = "";   //The folder content hash
         let enableAutoRefresh = true; //Enable directory updates on file change
         let filesIconTheme = "default";
-        let hideTimer = null; // Messagebox hide timer
 
         //File operations
         let clipboard = []; //System clipboard
@@ -1798,19 +1797,27 @@
                 const baseX = e.clientX ?? e.pageX - scrollX;
                 const baseY = e.clientY ?? e.pageY - scrollY;
 
-                // Locate
-                const finalX = Math.min(
+                // Check available space above and below the cursor
+                const spaceBelow = win.h - baseY;
+                const spaceAbove = baseY;
+
+                // Determine vertical alignment: use bottom if not enough space below
+                let finalY;
+                if (spaceBelow >= menuH) {
+                    finalY = baseY; // Enough space below, show normally
+                } else if (spaceAbove >= menuH) {
+                    finalY = baseY - menuH; // Show above the cursor
+                } else {
+                    // Clamp to viewport bounds if both sides are insufficient
+                    finalY = Math.max(0, Math.min(win.h - menuH, baseY - menuH / 2));
+                }
+
+                // Horizontal positioning with RTL support
+                const isRTL = document.documentElement.dir === 'rtl';
+                let finalX = Math.min(
                     Math.max(0, baseX - (baseX + menuW > win.w ? menuW : 0)),
                     win.w - menuW
                 );
-
-                const finalY = Math.min(
-                    Math.max(0, baseY - (baseY + menuH > win.h ? menuH : 0)),
-                    win.h - menuH
-                );
-
-                // Detect RTL language (eg. Arabic)
-                const isRTL = document.documentElement.dir === 'rtl';
 
                 // Apply the calculated positions to the context menu
                 $("#contextmenu").css({
@@ -4100,68 +4107,97 @@
 
         }
 
-        function msgbox(icon, text, delay = 3000) {
-            // Get the message box element
-            const msgboxEl = document.querySelector('.msgbox');
-            if (!msgboxEl) return;
+        // Message box queue
+        const msgboxQueue = {
+            queue: [],
+            isProcessing: false,
 
-            // Define animation
-            const show = () => {
-                msgboxEl.style.display = 'block';
-                msgboxEl.style.maxHeight = '0';
+            enqueue(icon, text, delay = 3000) {
+                this.queue.push({ icon, text, delay });
+                if (!this.isProcessing) {
+                    this.processNext();
+                } else {
+                    // Interrupt the current message box
+                    this.interruptCurrent();
+                }
+            },
+
+            processNext() {
+                if (this.queue.length === 0) {
+                    this.isProcessing = false;
+                    return;
+                }
+
+                const { icon, text, delay } = this.queue.shift();
+                this.isProcessing = true;
+                this.show(icon, text, delay);
+            },
+
+            interruptCurrent() {
+                const msgboxEl = document.querySelector('.msgbox');
+                if (!msgboxEl) return;
+
+                clearTimeout(this.hideTimer);
+
+                // Force re-render
+                msgboxEl.style.transition = 'none';
                 msgboxEl.style.opacity = '0';
+                msgboxEl.style.maxHeight = '0px';
 
-                void msgboxEl.offsetHeight; // Re-trigger layout
-                msgboxEl.style.transition = 'all 0.2s ease';
-                msgboxEl.style.maxHeight = '50px';
-                msgboxEl.style.opacity = '1';
-                msgboxEl.classList.add('animating');
-            };
-
-            const hide = (callback) => {
-                msgboxEl.style.maxHeight = '0';
-                msgboxEl.style.opacity = '0';
-
-                const onTransitionEnd = () => {
-                    msgboxEl.style.display = 'none';
-                    msgboxEl.removeEventListener('transitionend', onTransitionEnd);
+                // Delay to allow the animation to finish
+                setTimeout(() => {
                     msgboxEl.classList.remove('animating');
-                };
-                msgboxEl.addEventListener('transitionend', onTransitionEnd);
-            };
+                    this.processNext(); // Process next
+                }, 20);
+            },
 
-            // Hide first if there is an animation in progress
-            if (msgboxEl.classList.contains('animating')) {
-                clearTimeout(hideTimer); // Clear existing timer
-                hide(() => {
-                    // Show the new one after the current animation ends
-                    updateContentAndShow();
-                });
-                return;
-            }
+            show(icon, text, delay) {
+                const msgboxEl = document.querySelector('.msgbox');
+                if (!msgboxEl) return;
 
-            // Update and show the new message
-            function updateContentAndShow() {
+                // Update
                 const [iconEl, textEl] = msgboxEl.querySelectorAll('i, span');
                 if (iconEl) iconEl.className = `${icon} icon`;
                 if (textEl) textEl.textContent = text;
 
-                show();
+                // Show animation
+                msgboxEl.style.display = 'block';
+                msgboxEl.style.maxHeight = '0';
+                msgboxEl.style.opacity = '0';
+                void msgboxEl.offsetHeight; // Trigger reflow
 
-                // Set new timer
-                hideTimer = setTimeout(() => {
-                    hide();
-                    hideTimer = null; // Clear the timer
+                msgboxEl.style.transition = 'all 0.2s ease';
+                msgboxEl.style.maxHeight = '50px';
+                msgboxEl.style.opacity = '1';
+                msgboxEl.classList.add('animating');
+
+                // Close button
+                const closeBtn = msgboxEl.querySelector('.closeMsgButton');
+                if (closeBtn && !closeBtn.dataset.listenerAttached) {
+                    closeBtn.addEventListener('click', () => {
+                        this.interruptCurrent();
+                    });
+                    closeBtn.dataset.listenerAttached = true;
+                }
+
+                // Auto hide
+                this.hideTimer = setTimeout(() => {
+                    msgboxEl.style.maxHeight = '0';
+                    msgboxEl.style.opacity = '0';
+                    const onTransitionEnd = () => {
+                        msgboxEl.removeEventListener('transitionend', onTransitionEnd);
+                        msgboxEl.style.display = 'none';
+                        msgboxEl.classList.remove('animating');
+                        this.processNext(); // Process next
+                    };
+                    msgboxEl.addEventListener('transitionend', onTransitionEnd);
                 }, delay);
             }
+        };
 
-            updateContentAndShow();
-
-            // Close button
-            msgboxEl.querySelector('.closeMsgButton').onclick = () => {
-                clearTimeout(hideTimer);
-                hide();
-            };
+        // Message box
+        function msgbox(icon, text, delay = 3000) {
+            msgboxQueue.enqueue(icon, text, delay);
         }
 
         //Keyboard hotkey events
