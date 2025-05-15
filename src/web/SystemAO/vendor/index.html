@@ -1,26 +1,80 @@
 <!DOCTYPE html>
 <html>
-        <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=no">
-                <link rel="stylesheet" href="../../script/semantic/semantic.min.css">
-                <script type="text/javascript" src="../../script/jquery.min.js"></script>
-                <script type="text/javascript" src="../../script/semantic/semantic.min.js"></script>
-                <title>arozos Platform</title>
-        </head>
-    <body>
-        <div class="ui container">
-            <br>
-            <img class="ui fluid image" src="../vendor/img/banner.png">
-            <h4>What is this page?</h4>
-            <p>This is a branding page if you are making a devices with ArozOS pre-installed or forking your own version of ArozOS.</p>
-            <div class="ui divider"></div>
-            <h4>What is arozos.com?</h4>
-            <p>arozos.com is the entity for building, testing and releasing the offical ArozOS for different platforms and devices. If your lab is interested to release a customized version of ArozOS, please modify this page to fill your Lab's information.<br>
-            You can find the source of this page under <code>web/SystemAO/vendor/index.html</code></p>
-            <div class="ui divider"></div>
-            System released by <a href="http://arozos.com" target="_blank">http://arozos.com</a>
-            <br><br><br>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=no">
+    <link rel="stylesheet" href="../../script/semantic/semantic.min.css">
+    <script type="text/javascript" src="../../script/jquery.min.js"></script>
+    <script type="text/javascript" src="../../script/semantic/semantic.min.js"></script>
+    <title>Our Server - ArozOS</title>
+    <style>
+        .hero-image {
+            background-image: url('/SystemAO/vendor/img/custom_banner.png');
+            background-size: cover;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ui container">
+        <div class="hero-image">
+            SekaiNAS
         </div>
-    </body>
+        <br>
+        <h2>欢迎来到 Sekai.</h2>
+        <p>Sekai 是一个由校内学生用业余时间运营的小型服务器，目前它运行在一个旧的笔记本电脑上。Sekai 仅对受信任用户提供服务。</p>
+        <div class="ui divider"></div>
+        <h2>服务器结构</h2>
+        <p>Sekai 只选择<b>自由软件</b>和<b>开源软件</b>作为服务平台。我们相信开放团结的力量。</p>
+        <ul class="ui list">
+            <li>NAS: ArozOS</li>
+            <li>影视服务器: Jellyfin</li>
+            <li>下载服务器: Aria2</li>
+            <li>论坛: Flarum</li>
+        </ul>
+        <div class="ui divider"></div>
+        <h2>维护者</h2>
+        <p>Sekai 目前主要由 GT610 维护。</p>
+        <div class="column">
+            <div class="ui card">
+                <div class="content">
+                    <div class="header">GT610 的 GitHub 主页</div>
+                    <div class="description">
+                        关注主播谢谢喵。
+                    </div>
+                </div>
+                <div class="extra content">
+                    <a href="https://github.com/GT-610" target="_blank" class="ui button">在 GitHub 上查看</a>
+                </div>
+            </div>
+        </div>
+        <h2>组件 GitHub 仓库</h2>
+        <p>Sekai 的核心组件 ArozOS，是一个非常优秀的轻量级 Web 桌面系统解决方案，请大家支持一下，点个 star 吧！</p>
+        <div class="column">
+            <div class="ui card">
+                <div class="content">
+                    <div class="header">ArozOS</div>
+                    <div class="description">
+                        Web Desktop Operating System for low power platforms, Now written in Go!
+                    </div>
+                </div>
+                <div class="extra content">
+                    <a href="https://github.com/tobychui/arozos" target="_blank" class="ui button">在 GitHub 上查看</a>
+                </div>
+            </div>
+        </div>
+        <br>
+        <p>有任何疑问或建议，可以直接联系维护者。反正加进来的都有我们的联系方式，对吧？</p>
+        <br><br>
+    </div>
+</body>
+
 </html>
