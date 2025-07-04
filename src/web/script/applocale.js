@@ -100,11 +100,8 @@ function NewAppLocale() {
             if (el.placeholder && localized?.placeholder?.[attr]) {
                 el.placeholder = localized.placeholder[attr];
             }
-
-            // Optimize selector performance
-            const elements = document.querySelectorAll('[locale], [data-i18n]');
-            elements.forEach(el => this._translateElement(el));
         },
+
         // API
         getString: function(key, original) {
             if (this.lang === 'en-us') return original; // Directly return original if English
